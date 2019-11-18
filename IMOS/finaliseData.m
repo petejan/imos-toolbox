@@ -161,47 +161,28 @@ function sam = finaliseData(sam, rawFiles, flagVal, toolboxVersion)
       end
   end
   
-  if isempty(sam.time_deployment_start)
-      sam.time_deployment_start         = [];
-      sam.time_deployment_start_origin  = [];
+  % set the time coverage/deployment period from the data
+  iTime = getVar(sam.variables, 'TIME');
+  if iTime ~= 0
+    if isempty(sam.time_coverage_start)
+      sam.time_coverage_start = sam.variables{iTime}.data(1);
+    end
+    if isempty(sam.time_coverage_end)
+      sam.time_coverage_end   = sam.variables{iTime}.data(end);
+    end
+    if isempty(sam.time_deployment_start)
+      sam.time_deployment_start = sam.variables{iTime}.data(1);
+    end
+    if isempty(sam.time_deployment_end)
+      sam.time_deployment_end = sam.variables{iTime}.data(end);
+    end
+  else
+    if isempty(sam.time_coverage_start), sam.time_coverage_start = []; end
+    if isempty(sam.time_coverage_end), sam.time_coverage_end   = []; end
+    if isempty(sam.time_deployment_start), sam.time_deployment_start = []; end
+    if isempty(sam.time_deployment_end), sam.time_deployment_end = []; end
   end
-  if isempty(sam.time_deployment_end)
-      sam.time_deployment_end           = [];
-      sam.time_deployment_end_origin    = [];
-  end
-  
-  % set the time coverage period from the data
-  switch mode
-      case 'profile'
-          iTime = getVar(sam.variables, 'TIME');
-          if iTime ~= 0
-              if isempty(sam.time_coverage_start),
-                  sam.time_coverage_start = sam.variables{iTime}.data(1);
-              end
-              if isempty(sam.time_coverage_end),
-                  sam.time_coverage_end   = sam.variables{iTime}.data(end);
-              end
-          else
-              if isempty(sam.time_coverage_start), sam.time_coverage_start = []; end
-              if isempty(sam.time_coverage_end),   sam.time_coverage_end   = []; end
-          end
-          
-      case 'timeSeries'
-          iTime = getVar(sam.dimensions, 'TIME');
-          if iTime ~= 0
-              if isempty(sam.time_coverage_start),
-                  sam.time_coverage_start = sam.dimensions{iTime}.data(1);
-              end
-              if isempty(sam.time_coverage_end),
-                  sam.time_coverage_end   = sam.dimensions{iTime}.data(end);
-              end
-          else
-              if isempty(sam.time_coverage_start), sam.time_coverage_start = []; end
-              if isempty(sam.time_coverage_end),   sam.time_coverage_end   = []; end
-          end
-  
-  end
-  
+
 end
 
 function sam = forceMonotonic(sam, mode)
