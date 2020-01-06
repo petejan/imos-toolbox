@@ -207,3 +207,33 @@ WWPP,                0, sea_surface_wind_wave_period_at_variance_spectral_densit
 WWSH,                1, sea_surface_wind_wave_significant_height,                                                 m,             ,              ,                                  W, 999999.0, 0.0,      100.0,    float
 XCO2_AIR,            1, mole_fraction_of_carbon_dioxide_in_air,                                                   1e-6,          ,              ,                                  K, 999999.0, ,         ,         float
 XCO2_WATER,          0, mole_fraction_of_carbon_dioxide_in_sea_water,                                             1e-6,          ,              ,                                  K, 999999.0, ,         ,         float
+%
+% parameters for Satlantic ISUS/SUNA
+% calibration file data
+I0,                  0, calibration_reference_intensity,                                                          1,             ,              ,                                  R, 999999.0, ,         ,         float
+ESW,                 0, seawater_attenuation_coefficient,                                                         psal-1 cm-1,   ,              ,                                  R, 999999.0, ,         ,         float
+ETSW,                0, temp_seawater_attenuation_coefficient,                                                    psal-1 deg-1 cm-1,  ,              ,                                  R, 999999.0, ,         ,         float
+ENO3,                0, nitrate_molar_attenuation_coefficient,                                                    L umol-1 cm-1, ,              ,                                  R, 999999.0, ,         ,         float
+% scan data
+SCAN_TYPE,           0, scan_type,                                                                                1,             ,              ,                                  R, 999999.0, ,         ,         byte
+UV,                  0, spectrometer_intensity,                                                                   1,             ,              ,                                  R, 999999.0, ,         ,         float
+NTRI,                0, calculated_nitrate,                                                                       umol/l,        ,              ,                                  R, 999999.0, ,         ,         float
+NITRATE_UM,          0, calculated_nitrate,                                                                       umol/l,        ,              ,                                  R, 999999.0, ,         ,         float
+AUX1,                0, aux1_fitting_coeff,                                                                       1,             ,              ,                                  R, 999999.0, ,         ,         float
+AUX2,                0, aux2_fitting_coeff,                                                                       1,             ,              ,                                  R, 999999.0, ,         ,         float
+AUX3,                0, aux3_fitting_coeff,                                                                       1,             ,              ,                                  R, 999999.0, ,         ,         float
+RMSe,                0, fitting_rms_error,                                                                        1,             ,              ,                                  R, 999999.0, ,         ,         float
+TEMP_INT,            0, internal_temperature,                                                                     degrees_Celsius,,             ,                                  R, 999999.0, ,         ,         float
+TEMP_LAMP,           0, lamp_temperature,                                                                         degrees_Celsius,,             ,                                  R, 999999.0, ,         ,         float
+TEMP_SPEC,           0, spectrometer_temperature,                                                                 degrees_Celsius,,             ,                                  R, 999999.0, ,         ,         float
+T_INT,            	 0, internal_temperature,                                                                     degrees_Celsius,,             ,                                  R, 999999.0, ,         ,         float
+T_LAMP,           	 0, lamp_temperature,                                                                         degrees_Celsius,,             ,                                  R, 999999.0, ,         ,         float
+T_SPEC,           	 0, spectrometer_temperature,                                                                 degrees_Celsius,,             ,                                  R, 999999.0, ,         ,         float
+VOLT_MAIN,           0, battery_voltage,                                                                          Volt,          ,              ,                                  R, 999999.0, ,         ,         float
+REF_AVG,             0, reference_intensity,                                                                      1,             ,              ,                                  R, 999999.0, ,         ,         float
+SW_DARK,             0, software_generated_dark_intensity,                                                        1,             ,              ,                                  R, 999999.0, ,         ,         float
+WAVELENGTH,          0, spectrum_wavelength,                                                                      1,             ,              ,                                  R, 999999.0, ,         ,         float
+FIT_S2,          	 0, fit_s2,                                                                      			  1,             ,              ,                                  R, 999999.0, ,         ,         float
+FIT_S3,          	 0, fit_s3,                                                                      			  1,             ,              ,                                  R, 999999.0, ,         ,         float
+FIT_B0,          	 0, fit_b0,                                                                      			  1,             ,              ,                                  R, 999999.0, ,         ,         float
+FIT_B1,          	 0, fit_b1,          			                                                              1,             ,              ,                                  R, 999999.0, ,         ,         float
