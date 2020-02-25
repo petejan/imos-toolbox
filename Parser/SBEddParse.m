@@ -79,12 +79,12 @@ varOrder{9} = {TEMPERATURE_NAME, CONDUCTIVITY_NAME, PRESSURE_NAME, 'VOLT1', 'VOL
 %
 
 dataline_expr    = '^( *(\-?[\d\.]+),)+.*(\d{2} \S{3} \d{4})(,? +)(\d{2}:\d{2}:\d{2})';
-notimedataline_expr    = '^( *(\-?[\d\.]+),?)+';
+dataline1_expr    = '^( *(\-?[\d\.]+),)+';
 
 header_expr       = '(SBE ?\S+)\s+[vV].?(\S+)\s+SERIAL NO.\s+(\S+)';
 nSamples_expr     = 'samplenumber = (\d+)';
 sample_int_expr   = 'sample interval = (\d+)';
-start_time_expr   = 'start time =.*(\d{2} \S{3} \d{4})(,? +)(\d{2}:\d{2}:\d{2})';
+start_time_expr   = '^start time =  (.*)';
 
 newHeaderExpr   = '<HardwareData DeviceType=''(\S+)'' SerialNumber=''(\S+)''>';
 firmExpr        = '<FirmwareVersion>(\S+)</FirmwareVersion>';
@@ -122,12 +122,12 @@ sample_data.meta.featureType            = mode;
 
 header = true; % start out looking for header
 commaSepDate = false; % some data downloads (SBE16) dont have a comma in the date time
+hasTime = true;
 
 lineno = 1;
 datalineno = 0;
 nSamples = 0;
 nDataValues = 0;
-hastimestamp = true;
 
 % Read file 
 
@@ -163,13 +163,12 @@ while (~feof(fid))
             sample_interval = nS{1};
             fprintf('sample interval %d\n', sample_interval);
         end
-        % check for start time
+        % check for sample interval
         tkn = regexp(line, start_time_expr, 'tokens');
         if ~isempty(tkn) 
-            start_time_str = [tkn{1}{1} ' ' tkn{1}{3}];
-            fprintf('start time %s\n', start_time_str);
+            startTime = datenum(tkn{1}{1}, 'dd mmm yyyy HH:MM:SS');
+            fprintf('start time %s\n', datestr(startTime));
         end
-        
         % check is salinity is mentioned in header, if so read salinity
         tkn = ~isempty(regexp(line, salinity1_expr)) || ~isempty(regexp(line, salinity2_expr)) || ~isempty(regexp(line, salinity3_expr));
         if (tkn)
@@ -208,49 +207,47 @@ while (~feof(fid))
                 samples = zeros(nSamples, nDataValues);
                 time = zeros(nSamples, 1);
             end
+        else
+            tkn = regexp(line, dataline1_expr, 'tokens');
+            if ~isempty(tkn) 
+                hasTime = false;
+                header = false;   
+                comma = strfind(line, ',');
+                nDataValues = size(comma,2) + 1;
+                % create a list of varNames from the possiable configurations
+                % based on number of data variables
+                varOrderIdx = nDataValues;
+                if outputSalinity
+                    varOrder{nDataValues-1}{end+1} = SALINITY_NAME;
+                    varOrderIdx = varOrderIdx - 1;
+                end
+                for i=1:nDataValues
+                    varNames{end+1} = varOrder{varOrderIdx}{i};
+                end
+                % allocate space for all samples in sample array, will be
+                % trimed to number of samples read later
+                if (nDataValues > 0) && (nSamples > 0)
+                    % create a sample array to store data
+                    samples = zeros(nSamples, nDataValues);
+                    interval = sample_interval / 24/60/60;
+                    time = (startTime:interval:startTime + (nSamples - 1) * interval)';    
+                end
+            end
         end
-        tkn = regexp(line, notimedataline_expr, 'tokens');
-        if ~isempty(tkn) 
-            header = false;  
-            hastimestamp = false;
-            comma = strfind(line, ',');
-            nDataValues = size(comma,2)+1;
-            % create a list of varNames from the possiable configurations
-            % based on number of data variables
-            varOrderIdx = nDataValues;
-            if outputSalinity
-                varOrder{nDataValues-1}{end+1} = SALINITY_NAME;
-                varOrderIdx = varOrderIdx - 1;
-            end
-            for i=1:nDataValues
-                varNames{end+1} = varOrder{varOrderIdx}{i};
-            end
-            % allocate space for all samples in sample array, will be
-            % trimed to number of samples read later
-            if (nDataValues > 0) && (nSamples > 0)
-                % create a sample array to store data
-                samples = zeros(nSamples, nDataValues);
-                %time = zeros(nSamples, 1);
-                time = (datenum(start_time_str):sample_interval/3600/24:sample_interval*(nSamples-1)/3600/24+datenum(start_time_str))';
-            end
-        end       
+
     end
     
     if ~header
         % read datalines
         comma = strfind(line, ',');
-        if (size(line,2) > 10) && (size(comma, 2) > 1)
-            datalineno = datalineno + 1;
-            if (hastimestamp)
-                if (commaSepDate)
-                    time(datalineno) = datenum(line(comma(end)+1:end),'dd mmm yyyy HH:MM:SS');
-                else
-                    time(datalineno) = datenum(line(comma(end-1)+1:end),'dd mmm yyyy, HH:MM:SS');
-                end
-            end
-            % read data line, using a , as separator
-            samples(datalineno,:) = cell2mat(textscan(line, '%f', nDataValues, 'Delimiter', ','));
+        datalineno = datalineno + 1;
+        if (commaSepDate)
+            time(datalineno) = datenum(line(comma(end)+1:end),'dd mmm yyyy HH:MM:SS');
+        elseif (hasTime)
+            time(datalineno) = datenum(line(comma(end-1)+1:end),'dd mmm yyyy, HH:MM:SS');
         end
+        % read data line, using a , as separator
+        samples(datalineno,:) = cell2mat(textscan(line, '%f', nDataValues, 'Delimiter', ','));
         
     end
     line = fgetl(fid);

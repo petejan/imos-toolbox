@@ -73,6 +73,12 @@ sensor_end      = '</sensor(.*)>';
 comment         = '<!--(.+?)-->';
 tag             = '<(.+?)>(.+)</\1>';
 
+sampleExpr      = '* sample interval = (\d+) seconds';
+sample2Expr      = 'sample interval = (\d+) seconds';
+startTimeExpr   = '# start_time = (.*)';
+startTime2Expr  = 'start time = (.*)';
+intervalExpr    = '# interval = seconds: (\d+)';
+
 header_expr  = '^\* Sea-Bird (.*?) *?Data File\:';
 
 % output struct
@@ -84,6 +90,7 @@ sample_data.dimensions = {};
 % sample data and names, gleaned from the file
 samples                = [];
 varNames               = {};
+time = [];
     
 sample_data.toolbox_input_file          = filename;
 
@@ -102,6 +109,7 @@ nSamples = 0;
 nDataValues = 0;
 sample_interval = 0;
 dataNameFull = {};
+code = [];
 
 % Read file 
 nSensors = 0;
@@ -115,6 +123,25 @@ equaStr = '';
 line = fgetl(fid);
 while ischar(line)
     
+    % check for interval expressions
+    tkn = regexp(line, sampleExpr, 'tokens');
+    if ~isempty(tkn) 
+        sample_interval        = str2double(tkn{1}{1});
+    end
+    tkn = regexp(line, sample2Expr, 'tokens');
+    if ~isempty(tkn) 
+        sample_interval        = str2double(tkn{1}{1});
+    end
+    % check for start time expressions
+    tkn = regexp(line, startTimeExpr, 'tokens');
+    if ~isempty(tkn) 
+        startTime = datenum(tkn{1}{1});
+    end
+    tkn = regexp(line, startTime2Expr, 'tokens');
+    if ~isempty(tkn) 
+        startTime = datenum(tkn{1}{1});
+    end
+
     % parse the header
     if header
         if sensor
@@ -172,16 +199,23 @@ while ischar(line)
                 nSensors = nSensors + 1;
                 sensorTag = 1;
             end
+            % check for sample interval expressions
+            tkn = regexp(line, sampleExpr, 'tokens');
+            if ~isempty(tkn) 
+                sample_interval        = str2double(tkn{1}{1});
+            end
             % check for name expressions
             tkn = regexp(line, name_expr, 'tokens');
             if ~isempty(tkn) 
                 % create a vector of names and imos names for the variables
-                dataValue = str2double(tkn{1}{1});
-                idx = find(strcmp(tkn{1}{2}, T.ShortName), 1);
+                dataValue = str2double(tkn{1}{1}) + 1;
+                idx = find(strcmpi(tkn{1}{2}, T.ShortName), 1);
                 if ~isempty(idx)
-                    code(dataValue+1) = idx;         
+                    code(dataValue) = idx;
+                else
+                    disp(['code not found : ' tkn{1}{2}]) 
                 end
-                dataNameFull(dataValue+1) = tkn{1}(3);
+                dataNameFull(dataValue) = tkn{1}(3);
             end
             % check for number of values expressions
             tkn = regexp(line, nvalues_expr, 'tokens');
@@ -214,10 +248,11 @@ while ischar(line)
         end
         end
     elseif ~header
+        
         % read data line, using a , as separator
-        %samples(datalineno,:) = cell2mat(textscan(line, '%f', nDataValues, 'Delimiter', '\t'));
-        %samples = fscanf(fid, '%f', [nDataValues Inf]);
-        %datalineno = datalineno + 1;
+        samples(datalineno,:) = cell2mat(textscan(line, '%f', nDataValues, 'Delimiter', '\t'));
+        samples = fscanf(fid, '%f', [nDataValues Inf]);
+        datalineno = datalineno + 1;
     end
     line = fgetl(fid);
     lineno = lineno + 1;
@@ -227,18 +262,30 @@ datalineno = size(samples, 1);
 fprintf('samples read %d\n', datalineno);
 
 % trim sample data to number of lines read
-time = time(1:(datalineno-1));
 samples = samples(1:(datalineno-1),:);
+if (size(time,1) >= 1)
+    time = time(1:(datalineno-1));
+end
 
 % massage any variables here as needed
+
+% time
+timeFound = 0;
 tidx = find(strcmp(T.ShortName(code), 'timeK')); % elapsed time (seconds since 01-Jan-2000)
 if ~isempty(tidx)
     time(:) = samples(:,tidx) / 86400 + datenum(2000,1,1);
+    timeFound = 1;
 end
 tidx = find(strcmp(T.ShortName(code), 'timeY')); % elapsed time (seconds since 1970-01-01)
 if ~isempty(tidx)
     time(:) = samples(:,tidx) / 86400 + datenum(1970,1,1);
+    timeFound = 1;
 end
+if (size(time,1) < 1)
+    interval = sample_interval / 24/60/60;
+    time = (startTime:interval:startTime + (datalineno - 1) * interval)';    
+end
+
 
 % set the sample interval if we did not read it from the header
 if (sample_interval < 0)
@@ -274,6 +321,7 @@ sample_data.variables{end}.dimensions       = [];
 %disp(dataNameFull');
 
 sensorNames = {};
+sensorVars = logical([]);
 for i = 1:size(sensorStruct,2)
     sn = regexp(sensorStruct(i).Name, '[^,]*, (.*)', 'tokens');
     if ~isempty(sn)
@@ -320,13 +368,15 @@ for k = 1:length(code)
   sample_data.variables{end}.file_full_name         = dataNameFull{k};
   
   % add any tags from the processing for the sensors for the variables
-  sensors = sensorVars(:,k);
-  if sum(sensors) ~= 0
-      sensor_tags = sensorStruct(sensors).tag;
+  if (size(sensorVars,1) >= 1)
+      sensors = sensorVars(:,k);
+      if sum(sensors) ~= 0
+          sensor_tags = sensorStruct(sensors).tag;
 
-      for sn = 1:size(sensor_tags,2)
-          cal = ['calibration_' sensor_tags{sn}{1}];
-          sample_data.variables{end}.(cal)         = sensor_tags{sn}{2};
+          for sn = 1:size(sensor_tags,2)
+              cal = ['calibration_' sensor_tags{sn}{1}];
+              sample_data.variables{end}.(cal)         = sensor_tags{sn}{2};
+          end
       end
   end
   sample_data.variables{end}.data = sample_data.variables{end}.typeCastFunc(samples(:,k));
